@@ -1,0 +1,13 @@
+services:
+  bot:
+    build: .
+    volumes:
+      - ./bot:/usr/src/bot:rw
+      - ./secrets:/usr/src/bot/secrets:ro
+    env_file:
+      - .env
+    environment:
+      - TZ=Asia/Tokyo
+    command: ["python3", "service-monitor.py"]
+    restart: unless-stopped
+    tty: true

@@ -1,0 +1,6 @@
+aiomysql
+cryptography
+davey
+discord.py
+py-cord
+pynacl
