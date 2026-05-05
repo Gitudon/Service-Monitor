@@ -1,2 +1,4 @@
 .env
 secrets/
+dev/
+**/__pycache__/
