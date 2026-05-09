@@ -38,54 +38,65 @@ class ServiceMonitor:
         with open("./secrets/server_ip_addresses.dat", "r") as f:
             server_ip_addresses = f.read().splitlines()
         for ip_address in server_ip_addresses:
-            if not ip_address.strip():
+            ip_address = ip_address.strip()
+            if not ip_address:
                 continue
             try:
-                await asyncio.sleep(1)
-                process = await asyncio.create_subprocess_exec(
-                    "ping",
-                    "-c",
-                    "1",
-                    "-W",
-                    "3",
-                    ip_address,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                )
-                await process.communicate()
-                if process.returncode != 0:
-                    await cls.send_alert_message(f"{ip_address}\nping応答がありません")
+                ping_success = False
+                for _ in range(5):
+                    await asyncio.sleep(1)
+                    process = await asyncio.create_subprocess_exec(
+                        "ping",
+                        "-c",
+                        "1",
+                        "-W",
+                        "3",
+                        ip_address,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
+                    )
+                    await process.communicate()
+                    if process.returncode == 0:
+                        ping_success = True
+                        break
+                if not ping_success:
+                    await cls.send_alert_message(f"{ip_address}\nping応答なし(5回連続)")
             except Exception as e:
                 await write_log_message(f"{e}", "ERROR")
                 traceback.print_exc()
                 await cls.send_alert_message(
-                    f"{ip_address}\nping応答確認中にエラーが発生しました"
+                    f"{ip_address}\nping応答確認中にエラーが発生"
                 )
 
     @classmethod
     async def check_tcp_port(cls, ip_address: str, port: str, service_name: str):
         try:
             await asyncio.sleep(1)
-            process = await asyncio.create_subprocess_exec(
-                "nc",
-                "-zv",
-                "-w",
-                "5",
-                ip_address,
-                port,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            await process.communicate()
-            if process.returncode != 0:
+            ssh_success = False
+            for _ in range(5):
+                process = await asyncio.create_subprocess_exec(
+                    "nc",
+                    "-zv",
+                    "-w",
+                    "5",
+                    ip_address,
+                    port,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                await process.communicate()
+                if process.returncode == 0:
+                    ssh_success = True
+                    break
+            if not ssh_success:
                 await cls.send_alert_message(
-                    f"{ip_address}:{port} {service_name}\nこのポートからの応答がありません"
+                    f"{ip_address}:{port} {service_name}\nこのポートからの応答なし(5回連続)"
                 )
         except Exception as e:
             await write_log_message(f"{e}", "ERROR")
             traceback.print_exc()
             await cls.send_alert_message(
-                f"{ip_address}:{port} {service_name}\nTCP接続確認中にエラーが発生しました"
+                f"{ip_address}:{port} {service_name}\nTCP接続確認中にエラーが発生"
             )
 
     @classmethod
@@ -110,13 +121,13 @@ class ServiceMonitor:
             stdout, _ = await process.communicate()
             if process.returncode != 0 or b"HTTP/" not in stdout:
                 await cls.send_alert_message(
-                    f"{ip_address}:{port} {service_name}\nHTTPの応答がありません"
+                    f"{ip_address}:{port} {service_name}\nHTTPの応答なし"
                 )
         except Exception as e:
             await write_log_message(f"{e}", "ERROR")
             traceback.print_exc()
             await cls.send_alert_message(
-                f"{ip_address}:{port} {service_name}\nHTTP応答確認中にエラーが発生しました"
+                f"{ip_address}:{port} {service_name}\nHTTP応答確認中にエラーが発生"
             )
 
     @classmethod
@@ -170,24 +181,24 @@ class ServiceMonitor:
                 status_code_str = stdout.decode("utf-8").strip()
                 if process.returncode != 0 or status_code_str == "000":
                     await cls.send_alert_message(
-                        f"{endpoint} {api_name}\ncURL接続に失敗しました "
+                        f"{endpoint} {api_name}\ncURL接続に失敗 "
                     )
                     continue
                 try:
                     status_code = int(status_code_str)
                     if not (200 <= status_code < 300):
                         await cls.send_alert_message(
-                            f"{endpoint} {api_name}\ncURL接続時に異常なステータスコード({status_code})が返されました"
+                            f"{endpoint} {api_name}\ncURL接続時に異常なステータスコード({status_code})を検知"
                         )
                 except ValueError:
                     await cls.send_alert_message(
-                        f"{endpoint} {api_name}\ncURL接続時に不明なステータスコード({status_code_str})が返されました"
+                        f"{endpoint} {api_name}\ncURL接続時に不明なステータスコード({status_code_str})を検知"
                     )
             except Exception as e:
                 await write_log_message(f"{e}", "ERROR")
                 traceback.print_exc()
                 await cls.send_alert_message(
-                    f"{endpoint} {api_name}\ncURL接続確認中にエラーが発生しました"
+                    f"{endpoint} {api_name}\ncURL接続確認中にエラーが発生"
                 )
 
     @classmethod
@@ -223,17 +234,17 @@ class ServiceMonitor:
                         status_code = latest_crawl_status[0][0]
                         if status_code != 200:
                             await cls.send_alert_message(
-                                f"{service}({method})\n最新APIクロール時に異常なステータスコード({status_code})が返されました"
+                                f"{service}({method})\n最新APIクロール時に異常なステータスコード({status_code})を検知"
                             )
                     if (now - latest_crawl_time).total_seconds() >= threshold_seconds:
                         await cls.send_alert_message(
-                            f"{service}({method})\n{threshold_seconds // 60}分以上クロールしていません"
+                            f"{service}({method})\n{threshold_seconds // 60}分以上クロール記録なし"
                         )
                 except Exception as e:
                     await write_log_message(f"{e}", "ERROR")
                     traceback.print_exc()
                     await cls.send_alert_message(
-                        f"{service}({method})\n最新クロール状況確認中にエラーが発生しました"
+                        f"{service}({method})\n最新クロール状況確認中にエラーが発生"
                     )
 
 
@@ -247,9 +258,7 @@ async def main():
         except Exception as e:
             await write_log_message(f"{e}", "ERROR")
             traceback.print_exc()
-            await ServiceMonitor.send_alert_message(
-                "サービス監視中にエラーが発生しました"
-            )
+            await ServiceMonitor.send_alert_message("サービス監視中にエラーが発生")
         await ServiceMonitor.sleep_to_next_time()
 
 
@@ -267,7 +276,7 @@ async def on_ready():
     except Exception as e:
         await write_log_message(f"{e}", "ERROR")
         traceback.print_exc()
-        await ServiceMonitor.send_alert_message("MySQL接続中にエラーが発生しました")
+        await ServiceMonitor.send_alert_message("MySQL接続中にエラーが発生")
     await write_log_message("Bot is ready!", "INFO")
     if task is None or task.done():
         task = asyncio.create_task(main())
