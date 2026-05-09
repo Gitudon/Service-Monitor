@@ -35,12 +35,14 @@ class ServiceMonitor:
 
     @classmethod
     async def ping_to_servers(cls):
+        servers = {}
         with open("./secrets/server_ip_addresses.dat", "r") as f:
-            server_ip_addresses = f.read().splitlines()
-        for ip_address in server_ip_addresses:
-            ip_address = ip_address.strip()
-            if not ip_address:
-                continue
+            for line in f.read().splitlines():
+                if not line.strip():
+                    continue
+                ip_address, server_name = line.strip().split()
+                servers[server_name] = ip_address
+        for server_name, ip_address in servers.items():
             try:
                 ping_success = False
                 for _ in range(5):
@@ -60,12 +62,14 @@ class ServiceMonitor:
                         ping_success = True
                         break
                 if not ping_success:
-                    await cls.send_alert_message(f"{ip_address}\nping応答なし(5回連続)")
+                    await cls.send_alert_message(
+                        f"{ip_address} {server_name}\nping応答なし(5回連続)"
+                    )
             except Exception as e:
                 await write_log_message(f"{e}", "ERROR")
                 traceback.print_exc()
                 await cls.send_alert_message(
-                    f"{ip_address}\nping応答確認中にエラーが発生"
+                    f"{ip_address} {server_name}\nping応答確認中にエラーが発生"
                 )
 
     @classmethod

@@ -1,6 +1,7 @@
 services:
   bot:
     build: .
+    network_mode: "host"
     volumes:
       - ./bot:/usr/src/bot:rw
       - ./secrets:/usr/src/bot/secrets:ro
