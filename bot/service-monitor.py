@@ -276,12 +276,13 @@ async def test(ctx):
 @client.event
 async def on_ready():
     global task
-    try:
-        await UseMySQL.init_pool()
-    except Exception as e:
-        await write_log_message(f"{e}", "ERROR")
-        traceback.print_exc()
-        await ServiceMonitor.send_alert_message("MySQL接続中にエラーが発生")
+    for _ in range(RETRY_COUNT):
+        try:
+            await UseMySQL.init_pool()
+        except Exception as e:
+            await write_log_message(f"{e}", "ERROR")
+            traceback.print_exc()
+            await ServiceMonitor.send_alert_message("MySQL接続中にエラーが発生")
     await write_log_message("Bot is ready!", "INFO")
     if task is None or task.done():
         task = asyncio.create_task(main())
