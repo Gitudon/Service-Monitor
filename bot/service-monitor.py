@@ -24,7 +24,7 @@ class ServiceMonitor:
         seconds_until = max(
             0, math.ceil((next_time - datetime.datetime.now()).total_seconds())
         )
-        await write_log_message(f"次の監視タイミング：{seconds_until}秒後", "INFO")
+        await write_log_message(f"次の監視タイミング...{seconds_until}秒後", "INFO")
         await asyncio.sleep(seconds_until)
 
     @staticmethod
