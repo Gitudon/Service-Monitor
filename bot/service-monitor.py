@@ -45,7 +45,7 @@ class ServiceMonitor:
         for server_name, ip_address in servers.items():
             try:
                 ping_success = False
-                for _ in range(5):
+                for _ in range(RETRY_COUNT):
                     await asyncio.sleep(1)
                     process = await asyncio.create_subprocess_exec(
                         "ping",
@@ -63,7 +63,7 @@ class ServiceMonitor:
                         break
                 if not ping_success:
                     await cls.send_alert_message(
-                        f"{ip_address} {server_name}\nping応答なし(5回連続)"
+                        f"{ip_address} {server_name}\nping応答なし"
                     )
             except Exception as e:
                 await write_log_message(f"{e}", "ERROR")
@@ -75,9 +75,9 @@ class ServiceMonitor:
     @classmethod
     async def check_tcp_port(cls, ip_address: str, port: str, service_name: str):
         try:
-            await asyncio.sleep(1)
             ssh_success = False
-            for _ in range(5):
+            for _ in range(RETRY_COUNT):
+                await asyncio.sleep(1)
                 process = await asyncio.create_subprocess_exec(
                     "nc",
                     "-zv",
@@ -94,7 +94,7 @@ class ServiceMonitor:
                     break
             if not ssh_success:
                 await cls.send_alert_message(
-                    f"{ip_address}:{port} {service_name}\nこのポートからの応答なし(5回連続)"
+                    f"{ip_address}:{port} {service_name}\nこのポートからの応答なし"
                 )
         except Exception as e:
             await write_log_message(f"{e}", "ERROR")
@@ -105,33 +105,32 @@ class ServiceMonitor:
 
     @classmethod
     async def check_http_service(cls, ip_address: str, port: str, service_name: str):
+        url = f"http://{ip_address}" if port == "80" else f"http://{ip_address}:{port}"
         try:
-            await asyncio.sleep(1)
-            url = (
-                f"http://{ip_address}"
-                if port == "80"
-                else f"http://{ip_address}:{port}"
-            )
-            process = await asyncio.create_subprocess_exec(
-                "curl",
-                "-I",
-                "-s",
-                "-m",
-                "5",
-                url,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            stdout, _ = await process.communicate()
-            if process.returncode != 0 or b"HTTP/" not in stdout:
-                await cls.send_alert_message(
-                    f"{ip_address}:{port} {service_name}\nHTTPの応答なし"
+            curl_success = False
+            for _ in range(RETRY_COUNT):
+                await asyncio.sleep(1)
+                process = await asyncio.create_subprocess_exec(
+                    "curl",
+                    "-I",
+                    "-s",
+                    "-m",
+                    "5",
+                    url,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
                 )
+                stdout, _ = await process.communicate()
+                if process.returncode == 0 and b"HTTP/" in stdout:
+                    curl_success = True
+                    break
+            if not curl_success:
+                await cls.send_alert_message(f"{url} {service_name}\nHTTPの応答なし")
         except Exception as e:
             await write_log_message(f"{e}", "ERROR")
             traceback.print_exc()
             await cls.send_alert_message(
-                f"{ip_address}:{port} {service_name}\nHTTP応答確認中にエラーが発生"
+                f"{url} {service_name}\nHTTP応答確認中にエラーが発生"
             )
 
     @classmethod
@@ -167,37 +166,39 @@ class ServiceMonitor:
                 endpoints[endpoint] = api_name
         for endpoint, api_name in endpoints.items():
             try:
-                await asyncio.sleep(1)
-                process = await asyncio.create_subprocess_exec(
-                    "curl",
-                    "-s",
-                    "-m",
-                    "5",
-                    "-o",
-                    "/dev/null",
-                    "-w",
-                    "%{http_code}",
-                    endpoint,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                )
-                stdout, _ = await process.communicate()
-                status_code_str = stdout.decode("utf-8").strip()
-                if process.returncode != 0 or status_code_str == "000":
-                    await cls.send_alert_message(
-                        f"{endpoint} {api_name}\ncURL接続に失敗 "
+                curl_success = False
+                for _ in range(RETRY_COUNT):
+                    await asyncio.sleep(1)
+                    process = await asyncio.create_subprocess_exec(
+                        "curl",
+                        "-s",
+                        "-m",
+                        "5",
+                        "-o",
+                        "/dev/null",
+                        "-w",
+                        "%{http_code}",
+                        endpoint,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
                     )
-                    continue
-                try:
-                    status_code = int(status_code_str)
-                    if not (200 <= status_code < 300):
+                    stdout, _ = await process.communicate()
+                    status_code_str = stdout.decode("utf-8").strip()
+                    if process.returncode == 0 and status_code_str != "000":
+                        curl_success = True
+                        break
+                    try:
+                        status_code = int(status_code_str)
+                        if not (200 <= status_code < 300):
+                            await cls.send_alert_message(
+                                f"{endpoint} {api_name}\ncURL接続時に異常なステータスコード({status_code})を検知"
+                            )
+                    except ValueError:
                         await cls.send_alert_message(
-                            f"{endpoint} {api_name}\ncURL接続時に異常なステータスコード({status_code})を検知"
+                            f"{endpoint} {api_name}\ncURL接続時に不明なステータスコード({status_code_str})を検知"
                         )
-                except ValueError:
-                    await cls.send_alert_message(
-                        f"{endpoint} {api_name}\ncURL接続時に不明なステータスコード({status_code_str})を検知"
-                    )
+                if not curl_success:
+                    await cls.send_alert_message(f"{endpoint} {api_name}\ncURL応答なし")
             except Exception as e:
                 await write_log_message(f"{e}", "ERROR")
                 traceback.print_exc()
