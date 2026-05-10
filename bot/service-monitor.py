@@ -277,6 +277,7 @@ async def test(ctx):
 async def on_ready():
     global task
     for _ in range(RETRY_COUNT):
+        await asyncio.sleep(1)
         try:
             await UseMySQL.init_pool()
         except Exception as e:
