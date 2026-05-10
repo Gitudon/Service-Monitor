@@ -11,21 +11,20 @@ class ServiceMonitor:
     @staticmethod
     async def sleep_to_next_time():
         now = datetime.datetime.now()
-        if 0 <= now.minute < 15:
-            next_time = now.replace(minute=15, second=0, microsecond=0)
-        elif 15 <= now.minute < 30:
-            next_time = now.replace(minute=30, second=0, microsecond=0)
-        elif 30 <= now.minute < 45:
-            next_time = now.replace(minute=45, second=0, microsecond=0)
-        else:
+        # 今の分数を10で割って切り捨てし、+1してから10を掛けることで「次の10の倍数」を計算
+        next_minute = ((now.minute // 10) + 1) * 10
+        if next_minute == 60:
+            # 60分になった場合は、1時間進めて0分にする
             next_time = (now + datetime.timedelta(hours=1)).replace(
                 minute=0, second=0, microsecond=0
             )
-
+        else:
+            # それ以外は計算した次の10の倍数分にする
+            next_time = now.replace(minute=next_minute, second=0, microsecond=0)
         seconds_until = max(
             0, math.ceil((next_time - datetime.datetime.now()).total_seconds())
         )
-        await write_log_message(f"Sleeping for {seconds_until} seconds...", "INFO")
+        await write_log_message(f"次の監視タイミング：{seconds_until}秒後", "INFO")
         await asyncio.sleep(seconds_until)
 
     @staticmethod
