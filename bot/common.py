@@ -13,6 +13,7 @@ SERVICE_NAME = "Service-Monitor"
 TOKEN = os.getenv("TOKEN")
 ALERT_CHANNEL_ID = int(os.getenv("ALERT_CHANNEL_ID"))
 TEST_CHANNEL_ID = int(os.getenv("TEST_CHANNEL_ID"))
+LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID"))
 RETRY_COUNT = 5
 
 # ログの設定
