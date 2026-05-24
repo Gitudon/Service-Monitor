@@ -33,6 +33,17 @@ class ServiceMonitor:
         await client.get_channel(ALERT_CHANNEL_ID).send(f"{timestamp}\n{message}")
 
     @classmethod
+    async def send_alive_message(cls):
+        now = datetime.datetime.now()
+        # 毎時0分に実行
+        if now.minute != 0:
+            return
+        timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
+        await client.get_channel(LOG_CHANNEL_ID).send(
+            f"{timestamp}\nサービス監視Botは正常に稼働しています。"
+        )
+
+    @classmethod
     async def ping_to_servers(cls):
         servers = {}
         with open("./secrets/server_ip_addresses.dat", "r") as f:
@@ -255,6 +266,7 @@ class ServiceMonitor:
 async def main():
     while True:
         try:
+            await ServiceMonitor.send_alive_message()
             await ServiceMonitor.ping_to_servers()
             await ServiceMonitor.check_server_services()
             await ServiceMonitor.check_api_endpoints()
