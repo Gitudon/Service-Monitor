@@ -9,7 +9,7 @@ services:
       - .env
     environment:
       - TZ=Asia/Tokyo
-    command: ["python3", "service-monitor.py"]
+    command: ["python3", "service_monitor.py"]
     restart: unless-stopped
     tty: true
     logging:
