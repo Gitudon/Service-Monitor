@@ -157,7 +157,7 @@ class ServiceMonitor:
         for ip_address, ports in ip_addresses.items():
             for port in ports:
                 if port == "80":
-                    await cls.check_http_service(ip_address, port, "Apache")
+                    await cls.check_http_service(ip_address, port, "Web Server")
                 elif port == "19999":
                     await cls.check_http_service(ip_address, port, "Netdata")
                 elif port == "22":
