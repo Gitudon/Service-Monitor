@@ -232,7 +232,14 @@ class ServiceMonitor:
                 try:
                     await asyncio.sleep(1)
                     latest_crawl_record = await UseMySQL.run_sql(
-                        "SELECT id, created_at FROM crawls WHERE service = %s AND method = %s ORDER BY created_at DESC LIMIT 1",
+                        """
+                        SELECT crawls.id, crawls.created_at FROM crawls
+                        JOIN crawl_methods cm ON cm.id = crawls.crawl_method_id
+                        JOIN services s ON s.id = crawls.service_id
+                        WHERE s.name = %s AND cm.name = %s
+                        ORDER BY crawls.created_at DESC
+                        LIMIT 1
+                        """,
                         (service, method),
                     )
                     if not latest_crawl_record:
