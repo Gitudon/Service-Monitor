@@ -262,6 +262,21 @@ class ServiceMonitor:
                         await cls.send_alert_message(
                             f"{service}({method})\n{threshold_seconds // 60}分以上クロール記録なし"
                         )
+                    await asyncio.sleep(1)
+                    last_five_minute_crawls = await UseMySQL.run_sql(
+                        """
+                        SELECT COUNT(*) FROM crawls
+                        JOIN crawl_methods cm ON cm.id = crawls.crawl_method_id
+                        JOIN services s ON s.id = crawls.service_id
+                        WHERE s.name = %s AND cm.name = %s AND crawls.created_at > NOW() - INTERVAL 5 MINUTE
+                        """,
+                        (service, method),
+                    )
+                    # 1sあたり10回以上のクロール回数は異常
+                    if int(last_five_minute_crawls[0][0]) >= 10 * 60 * 5:
+                        await cls.send_alert_message(
+                            f"{service}({method})\n最近5分以内に異常な回数のクロールを検知"
+                        )
                 except Exception as e:
                     await write_log_message(f"{e}", "ERROR")
                     traceback.print_exc()
