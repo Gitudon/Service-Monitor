@@ -1,0 +1,54 @@
+import asyncio
+import datetime
+import logging
+import math
+import os
+import subprocess
+import traceback
+import aiomysql
+import discord
+from discord.ext import commands
+import spotipy
+from spotipy.oauth2 import SpotifyOAuth
+
+SERVICE_NAME = "Service-Monitor"
+TOKEN = os.getenv("TOKEN")
+ALERT_CHANNEL_ID = int(os.getenv("ALERT_CHANNEL_ID"))
+TEST_CHANNEL_ID = int(os.getenv("TEST_CHANNEL_ID"))
+LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID"))
+RETRY_COUNT = 5
+
+# Spotify APIの設定
+SPOTIPY_CLIENT_ID = os.getenv("SPOTIPY_CLIENT_ID")
+SPOTIPY_CLIENT_SECRET = os.getenv("SPOTIPY_CLIENT_SECRET")
+SPOTIPY_REDIRECT_URI = os.getenv("SPOTIPY_REDIRECT_URI")
+SPOTIFY_SCOPE = os.getenv("SPOTIFY_SCOPE", "user-read-playback-state")
+sp = spotipy.Spotify(
+    auth_manager=SpotifyOAuth(
+        client_id=SPOTIPY_CLIENT_ID,
+        client_secret=SPOTIPY_CLIENT_SECRET,
+        redirect_uri=SPOTIPY_REDIRECT_URI,
+        scope=SPOTIFY_SCOPE,
+        open_browser=False,
+    )
+)
+
+# ログの設定
+format = logging.Formatter(
+    "[{asctime}] [{levelname:<8}] {name}: {message}",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    style="{",
+)
+handler = logging.StreamHandler()
+handler.setFormatter(format)
+logging.basicConfig(level=logging.INFO, handlers=[handler], force=True)
+bot_logger = logging.getLogger(SERVICE_NAME)
+
+
+async def write_log_message(message: str, category: str):
+    if category == "INFO":
+        bot_logger.info(message)
+    elif category == "ERROR":
+        bot_logger.error(message)
+    else:
+        bot_logger.warning(message)
