@@ -290,15 +290,15 @@ class ServiceMonitor:
             playback = sp.current_playback()
             if not playback or not playback.get("is_playing"):
                 await cls.send_alert_message("現在Spotifyが停止中です")
-            # else:
-            #     device = playback.get("device", {})
-            #     device_name = device.get("name", "")
-            #     track_name = playback["item"]["name"]
-            #     artist_name = playback["item"]["artists"][0]["name"]
-            #     await write_log_message(
-            #         f"[再生中] デバイス名: {device_name}, 曲名: {track_name}, アーティスト: {artist_name}",
-            #         "INFO",
-            #     )
+            else:
+                device = playback.get("device", {})
+                device_name = device.get("name", "")
+                track_name = playback["item"]["name"]
+                artist_name = playback["item"]["artists"][0]["name"]
+                await write_log_message(
+                    f"[再生中] デバイス名: {device_name}, 曲名: {track_name}, アーティスト: {artist_name}",
+                    "INFO",
+                )
         except Exception as e:
             await write_log_message(f"{e}", "ERROR")
             traceback.print_exc()
