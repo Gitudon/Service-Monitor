@@ -8,6 +8,8 @@ import traceback
 import aiomysql
 import discord
 from discord.ext import commands
+import spotipy
+from spotipy.oauth2 import SpotifyOAuth
 
 SERVICE_NAME = "Service-Monitor"
 TOKEN = os.getenv("TOKEN")
@@ -15,6 +17,21 @@ ALERT_CHANNEL_ID = int(os.getenv("ALERT_CHANNEL_ID"))
 TEST_CHANNEL_ID = int(os.getenv("TEST_CHANNEL_ID"))
 LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID"))
 RETRY_COUNT = 5
+
+# Spotify APIの設定
+SPOTIPY_CLIENT_ID = "6531bf54266e4e57976f0a82bd8141fa"
+SPOTIPY_CLIENT_SECRET = "003ee146d00c4517bf63d354e32a55d9"
+SPOTIPY_REDIRECT_URI = "http://127.0.0.1:8000/callback"
+SPOTIFY_SCOPE = "user-read-playback-state"
+sp = spotipy.Spotify(
+    auth_manager=SpotifyOAuth(
+        client_id=SPOTIPY_CLIENT_ID,
+        client_secret=SPOTIPY_CLIENT_SECRET,
+        redirect_uri=SPOTIPY_REDIRECT_URI,
+        scope=SPOTIFY_SCOPE,
+        open_browser=False,
+    )
+)
 
 # ログの設定
 format = logging.Formatter(

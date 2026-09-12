@@ -2,3 +2,5 @@
 secrets/
 dev/
 **/__pycache__/
+.cache
+test/
