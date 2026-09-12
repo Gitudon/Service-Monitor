@@ -5,6 +5,7 @@ services:
     volumes:
       - ./bot:/usr/src/bot:rw
       - ./secrets:/usr/src/bot/secrets:ro
+      - ./.cache:/app/.cache:rw
     env_file:
       - .env
     environment:

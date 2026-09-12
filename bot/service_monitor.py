@@ -284,6 +284,26 @@ class ServiceMonitor:
                         f"{service}({method})\n最新クロール状況確認中にエラーが発生"
                     )
 
+    @classmethod
+    async def check_spotify(cls):
+        try:
+            playback = sp.current_playback()
+            if not playback or not playback.get("is_playing"):
+                await cls.send_alert_message("現在Spotifyが停止中です")
+            # else:
+            #     device = playback.get("device", {})
+            #     device_name = device.get("name", "")
+            #     track_name = playback["item"]["name"]
+            #     artist_name = playback["item"]["artists"][0]["name"]
+            #     await write_log_message(
+            #         f"[再生中] デバイス名: {device_name}, 曲名: {track_name}, アーティスト: {artist_name}",
+            #         "INFO",
+            #     )
+        except Exception as e:
+            await write_log_message(f"{e}", "ERROR")
+            traceback.print_exc()
+            await cls.send_alert_message("Spotifyの再生状況確認中にエラーが発生")
+
 
 async def main():
     while True:
@@ -293,6 +313,7 @@ async def main():
             await ServiceMonitor.check_server_services()
             await ServiceMonitor.check_api_endpoints()
             await ServiceMonitor.check_crawlers()
+            await ServiceMonitor.check_spotify()
         except Exception as e:
             await write_log_message(f"{e}", "ERROR")
             traceback.print_exc()
